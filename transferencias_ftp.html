@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Transferencias FTP</title>
+<style>
+:root{--bg:#f0f2f5;--surface:#fff;--surface2:#f5f7fa;--surface3:#e4e8ee;--accent:#1a56db;--accent-light:#dbeafe;--accent-mid:#3b82f6;--green:#065f46;--green-light:#d1fae5;--amber:#78350f;--amber-light:#fef3c7;--blue-light:#eff6ff;--text:#0f172a;--text2:#64748b;--border:#d1d5db;--radius:6px;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:Inter,"Segoe UI",system-ui,sans-serif;font-size:14px;line-height:1.5;}
+.header{background:var(--accent);border-bottom:1px solid #1e40af;padding:14px 32px;display:flex;align-items:center;gap:20px;position:sticky;top:0;z-index:100;}
+.header-title{font-size:16px;font-weight:600;color:#fff;}.header-sub{color:#bfdbfe;font-size:13px;}.header-count{margin-left:auto;font-size:13px;color:#bfdbfe;}
+.tabs{background:var(--surface);border-bottom:1px solid var(--border);padding:0 32px;display:flex;}
+.tab{padding:12px 20px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-bottom:2px solid transparent;transition:all .15s;white-space:nowrap;user-select:none;}
+.tab:hover{color:var(--text);}.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.main{padding:28px 32px;max-width:1400px;margin:0 auto;}
+#view-transferencia{display:block;}#view-categoria,#view-comparar{display:none;}
+/* Group tabs */
+.group-tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:20px;padding:12px 14px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);align-items:center;}
+.group-label{font-size:11px;color:var(--text2);margin-right:4px;}
+.group-tab{padding:5px 14px;border-radius:4px;border:1px solid var(--border);background:var(--surface2);color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;user-select:none;}
+.group-tab:hover{background:var(--surface3);color:var(--text);}
+.group-tab.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.group-tab .gtcount{font-size:11px;opacity:.75;}
+/* Transfer cards */
+.transfer-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:12px;margin-bottom:24px;}
+.transfer-card{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--border);border-radius:var(--radius);padding:16px 18px;cursor:pointer;transition:border-color .15s,box-shadow .15s;}
+.transfer-card:hover{border-color:#93c5fd;border-left-color:var(--accent-mid);box-shadow:0 1px 4px rgba(0,0,0,.08);}
+.transfer-card.active{border-color:var(--accent);border-left-color:var(--accent);background:var(--blue-light);}
+.tc-name{font-weight:600;font-size:14px;color:var(--text);margin-bottom:8px;}.tc-meta{display:flex;gap:6px;flex-wrap:wrap;}
+.tc-badge{font-size:11px;font-weight:500;padding:2px 8px;border-radius:4px;}
+.tc-badge.green{background:var(--green-light);color:var(--green);}.tc-badge.blue{background:var(--blue-light);color:var(--accent);}
+.detail-panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.detail-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;background:var(--accent);}
+.detail-title{font-size:14px;font-weight:600;color:#fff;}.detail-meta{display:flex;gap:8px;margin-left:auto;}
+.fields-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1px;background:var(--border);}
+.field-block{background:var(--surface);padding:16px 18px;}.field-block:hover{background:var(--surface2);}
+.field-label{font-size:11px;font-weight:600;letter-spacing:.5px;text-transform:uppercase;color:var(--accent);margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.field-count{font-weight:400;letter-spacing:0;text-transform:none;font-size:11px;color:var(--text2);}
+.values-list{display:flex;flex-wrap:wrap;gap:4px;max-height:190px;overflow-y:auto;}.values-list.expanded{max-height:none;}
+.val-tag{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-size:12px;color:var(--text);white-space:nowrap;}
+.val-tag.period{background:var(--amber-light);border-color:#fcd34d;color:var(--amber);font-weight:500;}
+.val-tag.weeks{background:var(--blue-light);border-color:#93c5fd;color:var(--accent);font-weight:500;}
+.expand-btn{margin-top:8px;width:100%;background:none;border:1px solid var(--border);border-radius:4px;color:var(--text2);font-size:11px;padding:3px 0;cursor:pointer;}
+.expand-btn:hover{background:var(--surface2);color:var(--text);}
+.section-title{font-size:16px;font-weight:600;color:var(--text);margin-bottom:4px;}
+.section-sub{color:var(--text2);font-size:13px;margin-bottom:16px;}
+/* Field selector */
+.field-selector{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;}
+.field-btn{padding:6px 14px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:13px;cursor:pointer;user-select:none;}
+.field-btn:hover{background:var(--surface2);color:var(--text);}.field-btn.active{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:500;}
+/* Search + filter row */
+.search-row{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap;}
+.search-input{flex:1;min-width:200px;max-width:360px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:7px 12px;color:var(--text);font-size:13px;outline:none;}
+.search-input:focus{border-color:var(--accent);}.search-input::placeholder{color:var(--text2);}
+.search-count{font-size:12px;color:var(--text2);}
+.dup-btn{padding:6px 14px;border-radius:4px;border:1px solid var(--border);background:var(--surface);color:var(--text2);font-size:13px;cursor:pointer;user-select:none;white-space:nowrap;display:flex;align-items:center;gap:6px;}
+.dup-btn:hover{background:var(--surface2);color:var(--text);}
+.dup-btn.active{background:#fef3c7;border-color:#fcd34d;color:#92400e;font-weight:500;}
+.dup-btn .dup-dot{width:7px;height:7px;border-radius:50%;background:currentColor;flex-shrink:0;}
+/* Matrix */
+.cat-matrix-wrap{overflow-x:auto;overflow-y:auto;max-height:600px;border:1px solid var(--border);border-radius:var(--radius);scrollbar-width:thin;scrollbar-color:#94a3b8 var(--surface2);}
+.cat-matrix-wrap::-webkit-scrollbar{width:10px;height:10px;}
+.cat-matrix-wrap::-webkit-scrollbar-track{background:var(--surface2);}
+.cat-matrix-wrap::-webkit-scrollbar-thumb{background:#94a3b8;border-radius:4px;border:2px solid var(--surface2);}
+.cat-matrix-wrap::-webkit-scrollbar-thumb:hover{background:var(--accent);}
+.cat-matrix-wrap::-webkit-scrollbar-corner{background:var(--surface2);}
+.cat-matrix{background:var(--surface);min-width:100%;width:max-content;}
+.cat-matrix-header{display:grid;background:var(--surface2);border-bottom:2px solid var(--border);position:sticky;top:0;z-index:3;}
+.cat-matrix-row{display:grid;border-bottom:1px solid var(--border);}
+.cat-matrix-row:last-child{border-bottom:none;}.cat-matrix-row:hover{background:#f0f4ff;}
+.cat-matrix-row:hover .cat-col.value-name{background:#f0f4ff;}
+.cat-col{padding:10px 16px;font-size:13px;display:flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;}
+.cat-col.value-name{justify-content:flex-start;color:var(--text);white-space:normal;word-break:break-word;position:sticky;left:0;z-index:2;background:var(--surface);border-right:2px solid var(--border);box-shadow:3px 0 8px rgba(0,0,0,.06);}
+.cat-matrix-header .cat-col:first-child{position:sticky;left:0;z-index:4;background:var(--surface2);border-right:2px solid var(--border);box-shadow:3px 0 8px rgba(0,0,0,.06);justify-content:flex-start;flex-direction:column;align-items:flex-start;gap:2px;}
+.cat-matrix-header .cat-col{flex-direction:column;gap:2px;padding:10px 16px;}
+.col-name{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;}
+.col-count{font-size:12px;font-weight:600;color:var(--text);letter-spacing:0;text-transform:none;}
+.col-count.highlight{color:var(--accent);}
+.col-even{background:#ffffff;}.col-odd{background:#f5f7fa;}
+.cat-matrix-header .col-even{background:#eef0f3;}.cat-matrix-header .col-odd{background:#e6e9ee;}
+.present-dot{font-size:15px;font-weight:700;line-height:1;color:var(--accent);}.present-dot::before{content:"\2713";}
+.absent-dot{width:8px;height:8px;border-radius:50%;background:#d1d5db;border:1px solid #c4c9d4;flex-shrink:0;}
+/* Compare */
+.compare-grid{display:grid;gap:10px;}
+.compare-field-section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.cfs-header{background:var(--surface2);padding:10px 16px;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;}
+.cfs-header-detail{font-weight:400;text-transform:none;letter-spacing:0;font-size:12px;}
+.cfs-body{padding:14px 16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;}
+.cfs-transfer{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.cfs-t-header{padding:7px 12px;background:var(--surface3);font-size:11px;color:var(--text2);border-bottom:1px solid var(--border);font-weight:600;}
+.cfs-t-body{padding:10px 12px;display:flex;flex-wrap:wrap;gap:4px;max-height:140px;overflow-y:auto;}
+.diff-tag{font-size:11px;padding:2px 7px;border-radius:3px;font-weight:500;}
+.only-here{background:var(--accent-light);border:1px solid #93c5fd;color:var(--accent);}
+.in-all{background:var(--surface3);border:1px solid var(--border);color:var(--text2);font-weight:400;}
+.empty{text-align:center;padding:40px;color:var(--text2);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="header">
+  <div><div class="header-title">Transferencias FTP</div><div class="header-sub">Visao dos dados do cliente</div></div>
+  <div class="header-count" id="header-info"></div>
+</div>
+<div class="tabs">
+  <div class="tab active" onclick="switchView('transferencia')">Por Transferencia</div>
+  <div class="tab" onclick="switchView('categoria')">Por Campo</div>
+  <div class="tab" onclick="switchView('comparar')">Comparar</div>
+</div>
+<div class="main">
+  <div id="view-transferencia">
+    <div class="section-title">Por Transferencia</div>
+    <div class="section-sub">Selecione o grupo e a transferencia para ver seus campos</div>
+    <div class="group-tabs" id="tr-group-tabs"></div>
+    <div id="transfer-cards" class="transfer-grid"></div>
+    <div id="transfer-detail"></div>
+  </div>
+  <div id="view-categoria">
+    <div class="section-title">Por Campo</div>
+    <div class="section-sub">Selecione o grupo e o campo para ver os valores em cada transferencia</div>
+    <div class="group-tabs" id="cat-group-tabs"></div>
+    <div id="field-selector" class="field-selector"></div>
+    <div class="search-row">
+      <input class="search-input" id="cat-search" placeholder="Filtrar valores..." oninput="filterCatValues()"/>
+      <button class="dup-btn" id="dup-toggle" onclick="toggleDups()"><span class="dup-dot"></span>Somente duplicidades</button>
+      <span class="search-count" id="cat-count"></span>
+    </div>
+    <div id="cat-matrix"></div>
+  </div>
+  <div id="view-comparar">
+    <div class="section-title">Comparar Transferencias</div>
+    <div class="section-sub">Valores exclusivos aparecem em azul; comuns em cinza</div>
+    <div class="group-tabs" id="cmp-group-tabs"></div>
+    <div id="compare-content" class="compare-grid"></div>
+  </div>
+</div>
+<script>
+const DATA = [{"filename": "Alimentar_3.txt", "fields": [{"label": "PERIODO", "count": 9, "values": ["2026-03-30 00:00:00", "2026-04-06 00:00:00", "2026-04-13 00:00:00", "2026-04-20 00:00:00", "2026-04-27 00:00:00", "FULLYEAR_ACTUAL", "FULLYEAR_ANTERIOR", "YTD_ACTUAL", "YTD_ANTERIOR"]}, {"label": "SEGMENTACAO_CATEGORIA", "count": 4, "values": ["CHOCOLATE", "PETISCO SNACK", "PETISCO SNACK SAUDAVEL", "total"]}, {"label": "SEGMENTACAO_MERCADO", "count": 9, "values": ["CANAL", "MICROREGIAO", "PARCIAL MICROREGIAO CANAL", "PARCIAL UF CANAL", "REGIAO", "REGIAO - CANAL", "TOTAL GERAL", "UF", "UF - CANAL"]}, {"label": "MERCADO", "count": 297, "values": ["1 a 4", "10+", "5 a 9", "AC", "AC - REG MET+INTERIOR", "AC+RO - 1 a 4", "AC+RO - 10+ e Atacarejo", "AC+RO - 5 a 9", "AL", "AL - 1 a 4", "AL - 10+ e Atacarejo", "AL - 5 a 9", "AL - INTERIOR", "AL - REG MET", "AM", "AM - REG MET + INTERIOR", "AM+RR - 1 a 4", "AM+RR - 10+ e Atacarejo", "AM+RR - 5 a 9", "AP", "AP - REG MET + INTERIOR", "Atacarejo", "BA", "BA - 1 a 4", "BA - 10+ e Atacarejo", "BA - 5 a 9", "BA - INTERIOR", "BA - REG MET", "BA+SE - 1 a 4", "BA+SE - 10+", "BA+SE - 5 a 9", "BA+SE - Atacarejo", "BA+SE - INTERIOR - 1 a 4", "BA+SE - INTERIOR - 10+ e ATACAREJO", "BA+SE - INTERIOR - 5 a 9", "BA+SE - REG MET - 1 a 4", "BA+SE - REG MET - 10+ e ATACAREJO", "BA+SE - REG MET - 5 a 9", "BRASIL", "CE", "CE - 1 a 4", "CE - 10+ e Atacarejo", "CE - 5 a 9", "CE - INTERIOR", "CE - REG MET", "DF", "DF - 1 a 4", "DF - 10+", "DF - 10+ e Atacarejo", "DF - 5 a 9", "DF - Atacarejo", "DF - REG MET", "DF - REG MET - 1 a 4", "DF - REG MET - 10+ e ATACAREJO", "DF - REG MET - 5 a 9", "ES", "ES - 1 a 4", "ES - 10+ e Atacarejo", "ES - 5 a 9", "ES - INTERIOR", "ES - REG MET", "GO", "GO - 1 a 4", "GO - 10+", "GO - 10+ e Atacarejo", "GO - 5 a 9", "GO - Atacarejo", "GO - INTERIOR", "GO - INTERIOR - 1 a 4", "GO - INTERIOR - 10+ e ATACAREJO", "GO - INTERIOR - 5 a 9", "GO - REG MET", "GO - REG MET - 1 a 4", "GO - REG MET - 10+ e ATACAREJO", "GO - REG MET - 5 a 9", "MA", "MA - REG MET + INTERIOR", "MA+PI - 1 a 4", "MA+PI - 10+ e Atacarejo", "MA+PI - 5 a 9", "MA+PI+CE - 1 a 4", "MA+PI+CE - 10+", "MA+PI+CE - 5 a 9", "MA+PI+CE - Atacarejo", "MA+PI+CE - INTERIOR - 1 a 4", "MA+PI+CE - INTERIOR - 10+ e ATACAREJO", "MA+PI+CE - INTERIOR - 5 a 9", "MA+PI+CE - REG MET - 1 a 4", "MA+PI+CE - REG MET - 10+ e ATACAREJO", "MA+PI+CE - REG MET - 5 a 9", "MG", "MG - 1 a 4", "MG - 10+", "MG - 10+ e Atacarejo", "MG - 5 a 9", "MG - Atacarejo", "MG - INTERIOR", "MG - INTERIOR - 1 a 4", "MG - INTERIOR - 10+ e ATACAREJO", "MG - INTERIOR - 5 a 9", "MG - REG MET", "MG - REG MET - 1 a 4", "MG - REG MET - 10+ e ATACAREJO", "MG - REG MET - 5 a 9", "MG - REGIAO SUL DE MINAS", "MG - REGIAO SUL DE MINAS - 1 a 4", "MG - REGIAO SUL DE MINAS - 10+ e ATACAREJO", "MG - REGIAO SUL DE MINAS - 5 a 9", "MG - REGIAO TRIANGULO MINEIRO", "MG - REGIAO TRIANGULO MINEIRO - 1 a 4", "MG - REGIAO TRIANGULO MINEIRO - 10+ e ATACAREJO", "MG - REGIAO TRIANGULO MINEIRO - 5 a 9", "MS", "MS - 1 a 4", "MS - 10+ e Atacarejo", "MS - 5 a 9", "MS - REG MET + INTERIOR", "MT", "MT - 1 a 4", "MT - 10+ e Atacarejo", "MT - 5 a 9", "MT - REG MET + INTERIOR", "MT+MS - 1 a 4", "MT+MS - 10+", "MT+MS - 5 a 9", "MT+MS - Atacarejo", "PA", "PA - REG MET + INTERIOR", "PA+AP+TO - 1 a 4", "PA+AP+TO - 10+ e Atacarejo", "PA+AP+TO - 5 a 9", "PB", "PB - 1 a 4", "PB - 10+ e Atacarejo", "PB - 5 a 9", "PB - INTERIOR", "PB - REG MET", "PE", "PE - 1 a 4", "PE - 10+ e Atacarejo", "PE - 5 a 9", "PE - INTERIOR", "PE - REG MET", "PE+AL - 1 a 4", "PE+AL - 10+", "PE+AL - 5 a 9", "PE+AL - Atacarejo", "PE+AL - INTERIOR - 1 a 4", "PE+AL - INTERIOR - 10+ e ATACAREJO", "PE+AL - INTERIOR - 5 a 9", "PE+AL - REG MET - 1 a 4", "PE+AL - REG MET - 10+ e ATACAREJO", "PE+AL - REG MET - 5 a 9", "PI", "PI - INTERIOR", "PI - REG MET", "PR", "PR - 1 a 4", "PR - 10+", "PR - 10+ e Atacarejo", "PR - 5 a 9", "PR - Atacarejo", "PR - REG MET", "PR - REG MET - 1 a 4", "PR - REG MET - 10+ e ATACAREJO", "PR - REG MET - 5 a 9", "PR - REGIAO INTERIOR PARANAENSE", "PR - REGIAO INTERIOR PARANAENSE - 1 a 4", "PR - REGIAO INTERIOR PARANAENSE - 10+ e ATACAREJO", "PR - REGIAO INTERIOR PARANAENSE - 5 a 9", "PR - REGIAO NORTE PARANAENSE", "PR - REGIAO NORTE PARANAENSE - 1 a 4", "PR - REGIAO NORTE PARANAENSE - 10+ e ATACAREJO", "PR - REGIAO NORTE PARANAENSE - 5 a 9", "Região Centro-Oeste", "Região Centro-Oeste - 1 a 4", "Região Centro-Oeste - 10+", "Região Centro-Oeste - 5 a 9", "Região Centro-Oeste - Atacarejo", "Região Nordeste", "Região Nordeste - 1 a 4", "Região Nordeste - 10+", "Região Nordeste - 5 a 9", "Região Nordeste - Atacarejo", "Região Norte", "Região Norte - 1 a 4", "Região Norte - 10+", "Região Norte - 5 a 9", "Região Norte - Atacarejo", "Região Sudeste", "Região Sudeste - 1 a 4", "Região Sudeste - 10+", "Região Sudeste - 5 a 9", "Região Sudeste - Atacarejo", "Região Sul", "Região Sul - 1 a 4", "Região Sul - 10+", "Região Sul - 5 a 9", "Região Sul - Atacarejo", "RJ", "RJ - 1 a 4", "RJ - 10+ e Atacarejo", "RJ - 5 a 9", "RJ - INTERIOR", "RJ - REG MET", "RJ+ES - 1 a 4", "RJ+ES - 10+", "RJ+ES - 5 a 9", "RJ+ES - Atacarejo", "RJ+ES - INTERIOR - 1 a 4", "RJ+ES - INTERIOR - 10+ e ATACAREJO", "RJ+ES - INTERIOR - 5 a 9", "RJ+ES - REG MET - 1 a 4", "RJ+ES - REG MET - 10+ e ATACAREJO", "RJ+ES - REG MET - 5 a 9", "RN", "RN - 1 a 4", "RN - 10+ e Atacarejo", "RN - 5 a 9", "RN - INTERIOR", "RN - REG MET", "RN+PB - 1 a 4", "RN+PB - 10+", "RN+PB - 5 a 9", "RN+PB - Atacarejo", "RN+PB - INTERIOR - 1 a 4", "RN+PB - INTERIOR - 10+ e ATACAREJO", "RN+PB - INTERIOR - 5 a 9", "RN+PB - REG MET - 1 a 4", "RN+PB - REG MET - 10+ e ATACAREJO", "RN+PB - REG MET - 5 a 9", "RO", "RO - INTERIOR", "RO - REG MET", "RR", "RR - REG MET + INTERIOR", "RS", "RS - 1 a 4", "RS - 10+ e Atacarejo", "RS - 5 a 9", "RS - INTERIOR", "RS - REG MET", "RS+SC - 1 a 4", "RS+SC - 10+", "RS+SC - 5 a 9", "RS+SC - Atacarejo", "RS+SC - INTERIOR - 1 a 4", "RS+SC - INTERIOR - 10+ e ATACAREJO", "RS+SC - INTERIOR - 5 a 9", "RS+SC - REG MET - 1 a 4", "RS+SC - REG MET - 10+ e ATACAREJO", "RS+SC - REG MET - 5 a 9", "SC", "SC - 1 a 4", "SC - 10+ e Atacarejo", "SC - 5 a 9", "SC - INTERIOR", "SC - REG MET", "SE", "SE - 1 a 4", "SE - 10+ e Atacarejo", "SE - 5 a 9", "SE - INTERIOR", "SE - REG MET", "SP", "SP - 1 a 4", "SP - 10+", "SP - 10+ e Atacarejo", "SP - 5 a 9", "SP - Atacarejo", "SP - REG MET", "SP - REG MET - 1 a 4", "SP - REG MET - 10+ e ATACAREJO", "SP - REG MET - 5 a 9", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 1 a 4", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 10+ e ATACAREJO", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 5 a 9", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 1 a 4", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 10+ e ATACAREJO", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 5 a 9", "SP - REGIAO CAMPINAS", "SP - REGIAO CAMPINAS - 1 a 4", "SP - REGIAO CAMPINAS - 10+ e ATACAREJO", "SP - REGIAO CAMPINAS - 5 a 9", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 1 a 4", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 10+ e ATACAREJO", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 5 a 9", "SP - REGIAO SOROCABA", "SP - REGIAO SOROCABA - 1 a 4", "SP - REGIAO SOROCABA - 10+ e ATACAREJO", "SP - REGIAO SOROCABA - 5 a 9", "TO", "TO - INTERIOR", "TO - REG MET"]}, {"label": "SEGMENTACAO_PRODUTO", "count": 5, "values": ["CATEGORIA", "CODIGO_BARRAS", "FABRICANTE", "MARCA", "NOME_PRODUTO"]}, {"label": "SAME_STORE", "count": 2, "values": ["BASE SAME STORE", "BASE TOTAL"]}, {"label": "TIPO_CONTEUDO", "count": 2, "values": ["FIXO", "TOTAL"]}], "linhas": "139746118"}, {"filename": "Alimentar_4.txt", "fields": [{"label": "PERIODO", "count": 9, "values": ["2026-03-23 00:00:00", "2026-03-30 00:00:00", "2026-04-06 00:00:00", "2026-04-13 00:00:00", "2026-04-20 00:00:00", "FULLYEAR_ACTUAL", "FULLYEAR_ANTERIOR", "YTD_ACTUAL", "YTD_ANTERIOR"]}, {"label": "SEGMENTACAO_CATEGORIA", "count": 9, "values": ["CAFE", "CERVEJA", "COMPLEMENTO NUTRICIONAL", "GOMA DE MASCAR", "KETCHUP", "MAIONESE", "MOLHO", "SUPLEMENTO PARA ACADEMIA", "total"]}, {"label": "SEGMENTACAO_MERCADO", "count": 9, "values": ["CANAL", "MICROREGIAO", "PARCIAL MICROREGIAO CANAL", "PARCIAL UF CANAL", "REGIAO", "REGIAO - CANAL", "TOTAL GERAL", "UF", "UF - CANAL"]}, {"label": "MERCADO", "count": 297, "values": ["1 a 4", "10+", "5 a 9", "AC", "AC - REG MET+INTERIOR", "AC+RO - 1 a 4", "AC+RO - 10+ e Atacarejo", "AC+RO - 5 a 9", "AL", "AL - 1 a 4", "AL - 10+ e Atacarejo", "AL - 5 a 9", "AL - INTERIOR", "AL - REG MET", "AM", "AM - REG MET + INTERIOR", "AM+RR - 1 a 4", "AM+RR - 10+ e Atacarejo", "AM+RR - 5 a 9", "AP", "AP - REG MET + INTERIOR", "Atacarejo", "BA", "BA - 1 a 4", "BA - 10+ e Atacarejo", "BA - 5 a 9", "BA - INTERIOR", "BA - REG MET", "BA+SE - 1 a 4", "BA+SE - 10+", "BA+SE - 5 a 9", "BA+SE - Atacarejo", "BA+SE - INTERIOR - 1 a 4", "BA+SE - INTERIOR - 10+ e ATACAREJO", "BA+SE - INTERIOR - 5 a 9", "BA+SE - REG MET - 1 a 4", "BA+SE - REG MET - 10+ e ATACAREJO", "BA+SE - REG MET - 5 a 9", "BRASIL", "CE", "CE - 1 a 4", "CE - 10+ e Atacarejo", "CE - 5 a 9", "CE - INTERIOR", "CE - REG MET", "DF", "DF - 1 a 4", "DF - 10+", "DF - 10+ e Atacarejo", "DF - 5 a 9", "DF - Atacarejo", "DF - REG MET", "DF - REG MET - 1 a 4", "DF - REG MET - 10+ e ATACAREJO", "DF - REG MET - 5 a 9", "ES", "ES - 1 a 4", "ES - 10+ e Atacarejo", "ES - 5 a 9", "ES - INTERIOR", "ES - REG MET", "GO", "GO - 1 a 4", "GO - 10+", "GO - 10+ e Atacarejo", "GO - 5 a 9", "GO - Atacarejo", "GO - INTERIOR", "GO - INTERIOR - 1 a 4", "GO - INTERIOR - 10+ e ATACAREJO", "GO - INTERIOR - 5 a 9", "GO - REG MET", "GO - REG MET - 1 a 4", "GO - REG MET - 10+ e ATACAREJO", "GO - REG MET - 5 a 9", "MA", "MA - REG MET + INTERIOR", "MA+PI - 1 a 4", "MA+PI - 10+ e Atacarejo", "MA+PI - 5 a 9", "MA+PI+CE - 1 a 4", "MA+PI+CE - 10+", "MA+PI+CE - 5 a 9", "MA+PI+CE - Atacarejo", "MA+PI+CE - INTERIOR - 1 a 4", "MA+PI+CE - INTERIOR - 10+ e ATACAREJO", "MA+PI+CE - INTERIOR - 5 a 9", "MA+PI+CE - REG MET - 1 a 4", "MA+PI+CE - REG MET - 10+ e ATACAREJO", "MA+PI+CE - REG MET - 5 a 9", "MG", "MG - 1 a 4", "MG - 10+", "MG - 10+ e Atacarejo", "MG - 5 a 9", "MG - Atacarejo", "MG - INTERIOR", "MG - INTERIOR - 1 a 4", "MG - INTERIOR - 10+ e ATACAREJO", "MG - INTERIOR - 5 a 9", "MG - REG MET", "MG - REG MET - 1 a 4", "MG - REG MET - 10+ e ATACAREJO", "MG - REG MET - 5 a 9", "MG - REGIAO SUL DE MINAS", "MG - REGIAO SUL DE MINAS - 1 a 4", "MG - REGIAO SUL DE MINAS - 10+ e ATACAREJO", "MG - REGIAO SUL DE MINAS - 5 a 9", "MG - REGIAO TRIANGULO MINEIRO", "MG - REGIAO TRIANGULO MINEIRO - 1 a 4", "MG - REGIAO TRIANGULO MINEIRO - 10+ e ATACAREJO", "MG - REGIAO TRIANGULO MINEIRO - 5 a 9", "MS", "MS - 1 a 4", "MS - 10+ e Atacarejo", "MS - 5 a 9", "MS - REG MET + INTERIOR", "MT", "MT - 1 a 4", "MT - 10+ e Atacarejo", "MT - 5 a 9", "MT - REG MET + INTERIOR", "MT+MS - 1 a 4", "MT+MS - 10+", "MT+MS - 5 a 9", "MT+MS - Atacarejo", "PA", "PA - REG MET + INTERIOR", "PA+AP+TO - 1 a 4", "PA+AP+TO - 10+ e Atacarejo", "PA+AP+TO - 5 a 9", "PB", "PB - 1 a 4", "PB - 10+ e Atacarejo", "PB - 5 a 9", "PB - INTERIOR", "PB - REG MET", "PE", "PE - 1 a 4", "PE - 10+ e Atacarejo", "PE - 5 a 9", "PE - INTERIOR", "PE - REG MET", "PE+AL - 1 a 4", "PE+AL - 10+", "PE+AL - 5 a 9", "PE+AL - Atacarejo", "PE+AL - INTERIOR - 1 a 4", "PE+AL - INTERIOR - 10+ e ATACAREJO", "PE+AL - INTERIOR - 5 a 9", "PE+AL - REG MET - 1 a 4", "PE+AL - REG MET - 10+ e ATACAREJO", "PE+AL - REG MET - 5 a 9", "PI", "PI - INTERIOR", "PI - REG MET", "PR", "PR - 1 a 4", "PR - 10+", "PR - 10+ e Atacarejo", "PR - 5 a 9", "PR - Atacarejo", "PR - REG MET", "PR - REG MET - 1 a 4", "PR - REG MET - 10+ e ATACAREJO", "PR - REG MET - 5 a 9", "PR - REGIAO INTERIOR PARANAENSE", "PR - REGIAO INTERIOR PARANAENSE - 1 a 4", "PR - REGIAO INTERIOR PARANAENSE - 10+ e ATACAREJO", "PR - REGIAO INTERIOR PARANAENSE - 5 a 9", "PR - REGIAO NORTE PARANAENSE", "PR - REGIAO NORTE PARANAENSE - 1 a 4", "PR - REGIAO NORTE PARANAENSE - 10+ e ATACAREJO", "PR - REGIAO NORTE PARANAENSE - 5 a 9", "Região Centro-Oeste", "Região Centro-Oeste - 1 a 4", "Região Centro-Oeste - 10+", "Região Centro-Oeste - 5 a 9", "Região Centro-Oeste - Atacarejo", "Região Nordeste", "Região Nordeste - 1 a 4", "Região Nordeste - 10+", "Região Nordeste - 5 a 9", "Região Nordeste - Atacarejo", "Região Norte", "Região Norte - 1 a 4", "Região Norte - 10+", "Região Norte - 5 a 9", "Região Norte - Atacarejo", "Região Sudeste", "Região Sudeste - 1 a 4", "Região Sudeste - 10+", "Região Sudeste - 5 a 9", "Região Sudeste - Atacarejo", "Região Sul", "Região Sul - 1 a 4", "Região Sul - 10+", "Região Sul - 5 a 9", "Região Sul - Atacarejo", "RJ", "RJ - 1 a 4", "RJ - 10+ e Atacarejo", "RJ - 5 a 9", "RJ - INTERIOR", "RJ - REG MET", "RJ+ES - 1 a 4", "RJ+ES - 10+", "RJ+ES - 5 a 9", "RJ+ES - Atacarejo", "RJ+ES - INTERIOR - 1 a 4", "RJ+ES - INTERIOR - 10+ e ATACAREJO", "RJ+ES - INTERIOR - 5 a 9", "RJ+ES - REG MET - 1 a 4", "RJ+ES - REG MET - 10+ e ATACAREJO", "RJ+ES - REG MET - 5 a 9", "RN", "RN - 1 a 4", "RN - 10+ e Atacarejo", "RN - 5 a 9", "RN - INTERIOR", "RN - REG MET", "RN+PB - 1 a 4", "RN+PB - 10+", "RN+PB - 5 a 9", "RN+PB - Atacarejo", "RN+PB - INTERIOR - 1 a 4", "RN+PB - INTERIOR - 10+ e ATACAREJO", "RN+PB - INTERIOR - 5 a 9", "RN+PB - REG MET - 1 a 4", "RN+PB - REG MET - 10+ e ATACAREJO", "RN+PB - REG MET - 5 a 9", "RO", "RO - INTERIOR", "RO - REG MET", "RR", "RR - REG MET + INTERIOR", "RS", "RS - 1 a 4", "RS - 10+ e Atacarejo", "RS - 5 a 9", "RS - INTERIOR", "RS - REG MET", "RS+SC - 1 a 4", "RS+SC - 10+", "RS+SC - 5 a 9", "RS+SC - Atacarejo", "RS+SC - INTERIOR - 1 a 4", "RS+SC - INTERIOR - 10+ e ATACAREJO", "RS+SC - INTERIOR - 5 a 9", "RS+SC - REG MET - 1 a 4", "RS+SC - REG MET - 10+ e ATACAREJO", "RS+SC - REG MET - 5 a 9", "SC", "SC - 1 a 4", "SC - 10+ e Atacarejo", "SC - 5 a 9", "SC - INTERIOR", "SC - REG MET", "SE", "SE - 1 a 4", "SE - 10+ e Atacarejo", "SE - 5 a 9", "SE - INTERIOR", "SE - REG MET", "SP", "SP - 1 a 4", "SP - 10+", "SP - 10+ e Atacarejo", "SP - 5 a 9", "SP - Atacarejo", "SP - REG MET", "SP - REG MET - 1 a 4", "SP - REG MET - 10+ e ATACAREJO", "SP - REG MET - 5 a 9", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 1 a 4", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 10+ e ATACAREJO", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 5 a 9", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 1 a 4", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 10+ e ATACAREJO", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 5 a 9", "SP - REGIAO CAMPINAS", "SP - REGIAO CAMPINAS - 1 a 4", "SP - REGIAO CAMPINAS - 10+ e ATACAREJO", "SP - REGIAO CAMPINAS - 5 a 9", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 1 a 4", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 10+ e ATACAREJO", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 5 a 9", "SP - REGIAO SOROCABA", "SP - REGIAO SOROCABA - 1 a 4", "SP - REGIAO SOROCABA - 10+ e ATACAREJO", "SP - REGIAO SOROCABA - 5 a 9", "TO", "TO - INTERIOR", "TO - REG MET"]}, {"label": "SEGMENTACAO_PRODUTO", "count": 5, "values": ["CATEGORIA", "CODIGO_BARRAS", "FABRICANTE", "MARCA", "NOME_PRODUTO"]}, {"label": "SAME_STORE", "count": 2, "values": ["BASE SAME STORE", "BASE TOTAL"]}, {"label": "TIPO_CONTEUDO", "count": 2, "values": ["FIXO", "TOTAL"]}], "linhas": "184496606"}, {"filename": "Alimentar_5.txt", "fields": [{"label": "PERIODO", "count": 9, "values": ["2026-03-23 00:00:00", "2026-03-30 00:00:00", "2026-04-06 00:00:00", "2026-04-13 00:00:00", "2026-04-20 00:00:00", "FULLYEAR_ACTUAL", "FULLYEAR_ANTERIOR", "YTD_ACTUAL", "YTD_ANTERIOR"]}, {"label": "SEGMENTACAO_CATEGORIA", "count": 9, "values": ["BOVINO IN NATURA", "FORMULA INFANTIL", "FRANGO IN NATURA", "FRIOS INDUSTRIALIZADOS", "HAMBURGUER", "IOGURTE", "LEITE EM PO", "LEITE UHT", "total"]}, {"label": "SEGMENTACAO_MERCADO", "count": 9, "values": ["CANAL", "MICROREGIAO", "PARCIAL MICROREGIAO CANAL", "PARCIAL UF CANAL", "REGIAO", "REGIAO - CANAL", "TOTAL GERAL", "UF", "UF - CANAL"]}, {"label": "MERCADO", "count": 297, "values": ["1 a 4", "10+", "5 a 9", "AC", "AC - REG MET+INTERIOR", "AC+RO - 1 a 4", "AC+RO - 10+ e Atacarejo", "AC+RO - 5 a 9", "AL", "AL - 1 a 4", "AL - 10+ e Atacarejo", "AL - 5 a 9", "AL - INTERIOR", "AL - REG MET", "AM", "AM - REG MET + INTERIOR", "AM+RR - 1 a 4", "AM+RR - 10+ e Atacarejo", "AM+RR - 5 a 9", "AP", "AP - REG MET + INTERIOR", "Atacarejo", "BA", "BA - 1 a 4", "BA - 10+ e Atacarejo", "BA - 5 a 9", "BA - INTERIOR", "BA - REG MET", "BA+SE - 1 a 4", "BA+SE - 10+", "BA+SE - 5 a 9", "BA+SE - Atacarejo", "BA+SE - INTERIOR - 1 a 4", "BA+SE - INTERIOR - 10+ e ATACAREJO", "BA+SE - INTERIOR - 5 a 9", "BA+SE - REG MET - 1 a 4", "BA+SE - REG MET - 10+ e ATACAREJO", "BA+SE - REG MET - 5 a 9", "BRASIL", "CE", "CE - 1 a 4", "CE - 10+ e Atacarejo", "CE - 5 a 9", "CE - INTERIOR", "CE - REG MET", "DF", "DF - 1 a 4", "DF - 10+", "DF - 10+ e Atacarejo", "DF - 5 a 9", "DF - Atacarejo", "DF - REG MET", "DF - REG MET - 1 a 4", "DF - REG MET - 10+ e ATACAREJO", "DF - REG MET - 5 a 9", "ES", "ES - 1 a 4", "ES - 10+ e Atacarejo", "ES - 5 a 9", "ES - INTERIOR", "ES - REG MET", "GO", "GO - 1 a 4", "GO - 10+", "GO - 10+ e Atacarejo", "GO - 5 a 9", "GO - Atacarejo", "GO - INTERIOR", "GO - INTERIOR - 1 a 4", "GO - INTERIOR - 10+ e ATACAREJO", "GO - INTERIOR - 5 a 9", "GO - REG MET", "GO - REG MET - 1 a 4", "GO - REG MET - 10+ e ATACAREJO", "GO - REG MET - 5 a 9", "MA", "MA - REG MET + INTERIOR", "MA+PI - 1 a 4", "MA+PI - 10+ e Atacarejo", "MA+PI - 5 a 9", "MA+PI+CE - 1 a 4", "MA+PI+CE - 10+", "MA+PI+CE - 5 a 9", "MA+PI+CE - Atacarejo", "MA+PI+CE - INTERIOR - 1 a 4", "MA+PI+CE - INTERIOR - 10+ e ATACAREJO", "MA+PI+CE - INTERIOR - 5 a 9", "MA+PI+CE - REG MET - 1 a 4", "MA+PI+CE - REG MET - 10+ e ATACAREJO", "MA+PI+CE - REG MET - 5 a 9", "MG", "MG - 1 a 4", "MG - 10+", "MG - 10+ e Atacarejo", "MG - 5 a 9", "MG - Atacarejo", "MG - INTERIOR", "MG - INTERIOR - 1 a 4", "MG - INTERIOR - 10+ e ATACAREJO", "MG - INTERIOR - 5 a 9", "MG - REG MET", "MG - REG MET - 1 a 4", "MG - REG MET - 10+ e ATACAREJO", "MG - REG MET - 5 a 9", "MG - REGIAO SUL DE MINAS", "MG - REGIAO SUL DE MINAS - 1 a 4", "MG - REGIAO SUL DE MINAS - 10+ e ATACAREJO", "MG - REGIAO SUL DE MINAS - 5 a 9", "MG - REGIAO TRIANGULO MINEIRO", "MG - REGIAO TRIANGULO MINEIRO - 1 a 4", "MG - REGIAO TRIANGULO MINEIRO - 10+ e ATACAREJO", "MG - REGIAO TRIANGULO MINEIRO - 5 a 9", "MS", "MS - 1 a 4", "MS - 10+ e Atacarejo", "MS - 5 a 9", "MS - REG MET + INTERIOR", "MT", "MT - 1 a 4", "MT - 10+ e Atacarejo", "MT - 5 a 9", "MT - REG MET + INTERIOR", "MT+MS - 1 a 4", "MT+MS - 10+", "MT+MS - 5 a 9", "MT+MS - Atacarejo", "PA", "PA - REG MET + INTERIOR", "PA+AP+TO - 1 a 4", "PA+AP+TO - 10+ e Atacarejo", "PA+AP+TO - 5 a 9", "PB", "PB - 1 a 4", "PB - 10+ e Atacarejo", "PB - 5 a 9", "PB - INTERIOR", "PB - REG MET", "PE", "PE - 1 a 4", "PE - 10+ e Atacarejo", "PE - 5 a 9", "PE - INTERIOR", "PE - REG MET", "PE+AL - 1 a 4", "PE+AL - 10+", "PE+AL - 5 a 9", "PE+AL - Atacarejo", "PE+AL - INTERIOR - 1 a 4", "PE+AL - INTERIOR - 10+ e ATACAREJO", "PE+AL - INTERIOR - 5 a 9", "PE+AL - REG MET - 1 a 4", "PE+AL - REG MET - 10+ e ATACAREJO", "PE+AL - REG MET - 5 a 9", "PI", "PI - INTERIOR", "PI - REG MET", "PR", "PR - 1 a 4", "PR - 10+", "PR - 10+ e Atacarejo", "PR - 5 a 9", "PR - Atacarejo", "PR - REG MET", "PR - REG MET - 1 a 4", "PR - REG MET - 10+ e ATACAREJO", "PR - REG MET - 5 a 9", "PR - REGIAO INTERIOR PARANAENSE", "PR - REGIAO INTERIOR PARANAENSE - 1 a 4", "PR - REGIAO INTERIOR PARANAENSE - 10+ e ATACAREJO", "PR - REGIAO INTERIOR PARANAENSE - 5 a 9", "PR - REGIAO NORTE PARANAENSE", "PR - REGIAO NORTE PARANAENSE - 1 a 4", "PR - REGIAO NORTE PARANAENSE - 10+ e ATACAREJO", "PR - REGIAO NORTE PARANAENSE - 5 a 9", "Região Centro-Oeste", "Região Centro-Oeste - 1 a 4", "Região Centro-Oeste - 10+", "Região Centro-Oeste - 5 a 9", "Região Centro-Oeste - Atacarejo", "Região Nordeste", "Região Nordeste - 1 a 4", "Região Nordeste - 10+", "Região Nordeste - 5 a 9", "Região Nordeste - Atacarejo", "Região Norte", "Região Norte - 1 a 4", "Região Norte - 10+", "Região Norte - 5 a 9", "Região Norte - Atacarejo", "Região Sudeste", "Região Sudeste - 1 a 4", "Região Sudeste - 10+", "Região Sudeste - 5 a 9", "Região Sudeste - Atacarejo", "Região Sul", "Região Sul - 1 a 4", "Região Sul - 10+", "Região Sul - 5 a 9", "Região Sul - Atacarejo", "RJ", "RJ - 1 a 4", "RJ - 10+ e Atacarejo", "RJ - 5 a 9", "RJ - INTERIOR", "RJ - REG MET", "RJ+ES - 1 a 4", "RJ+ES - 10+", "RJ+ES - 5 a 9", "RJ+ES - Atacarejo", "RJ+ES - INTERIOR - 1 a 4", "RJ+ES - INTERIOR - 10+ e ATACAREJO", "RJ+ES - INTERIOR - 5 a 9", "RJ+ES - REG MET - 1 a 4", "RJ+ES - REG MET - 10+ e ATACAREJO", "RJ+ES - REG MET - 5 a 9", "RN", "RN - 1 a 4", "RN - 10+ e Atacarejo", "RN - 5 a 9", "RN - INTERIOR", "RN - REG MET", "RN+PB - 1 a 4", "RN+PB - 10+", "RN+PB - 5 a 9", "RN+PB - Atacarejo", "RN+PB - INTERIOR - 1 a 4", "RN+PB - INTERIOR - 10+ e ATACAREJO", "RN+PB - INTERIOR - 5 a 9", "RN+PB - REG MET - 1 a 4", "RN+PB - REG MET - 10+ e ATACAREJO", "RN+PB - REG MET - 5 a 9", "RO", "RO - INTERIOR", "RO - REG MET", "RR", "RR - REG MET + INTERIOR", "RS", "RS - 1 a 4", "RS - 10+ e Atacarejo", "RS - 5 a 9", "RS - INTERIOR", "RS - REG MET", "RS+SC - 1 a 4", "RS+SC - 10+", "RS+SC - 5 a 9", "RS+SC - Atacarejo", "RS+SC - INTERIOR - 1 a 4", "RS+SC - INTERIOR - 10+ e ATACAREJO", "RS+SC - INTERIOR - 5 a 9", "RS+SC - REG MET - 1 a 4", "RS+SC - REG MET - 10+ e ATACAREJO", "RS+SC - REG MET - 5 a 9", "SC", "SC - 1 a 4", "SC - 10+ e Atacarejo", "SC - 5 a 9", "SC - INTERIOR", "SC - REG MET", "SE", "SE - 1 a 4", "SE - 10+ e Atacarejo", "SE - 5 a 9", "SE - INTERIOR", "SE - REG MET", "SP", "SP - 1 a 4", "SP - 10+", "SP - 10+ e Atacarejo", "SP - 5 a 9", "SP - Atacarejo", "SP - REG MET", "SP - REG MET - 1 a 4", "SP - REG MET - 10+ e ATACAREJO", "SP - REG MET - 5 a 9", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 1 a 4", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 10+ e ATACAREJO", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 5 a 9", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 1 a 4", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 10+ e ATACAREJO", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 5 a 9", "SP - REGIAO CAMPINAS", "SP - REGIAO CAMPINAS - 1 a 4", "SP - REGIAO CAMPINAS - 10+ e ATACAREJO", "SP - REGIAO CAMPINAS - 5 a 9", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 1 a 4", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 10+ e ATACAREJO", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 5 a 9", "SP - REGIAO SOROCABA", "SP - REGIAO SOROCABA - 1 a 4", "SP - REGIAO SOROCABA - 10+ e ATACAREJO", "SP - REGIAO SOROCABA - 5 a 9", "TO", "TO - INTERIOR", "TO - REG MET"]}, {"label": "SEGMENTACAO_PRODUTO", "count": 5, "values": ["CATEGORIA", "CODIGO_BARRAS", "FABRICANTE", "MARCA", "NOME_PRODUTO"]}, {"label": "SAME_STORE", "count": 2, "values": ["BASE SAME STORE", "BASE TOTAL"]}, {"label": "TIPO_CONTEUDO", "count": 2, "values": ["FIXO", "TOTAL"]}], "linhas": "139297008"}, {"filename": "Alimentar_6.txt", "fields": [{"label": "PERIODO", "count": 9, "values": ["2026-03-23 00:00:00", "2026-03-30 00:00:00", "2026-04-06 00:00:00", "2026-04-13 00:00:00", "2026-04-20 00:00:00", "FULLYEAR_ACTUAL", "FULLYEAR_ANTERIOR", "YTD_ACTUAL", "YTD_ANTERIOR"]}, {"label": "SEGMENTACAO_CATEGORIA", "count": 9, "values": ["ALVEJANTE E TIRA MANCHA", "AMACIANTE", "DESENGORDURANTE", "DESINFETANTE", "LEITE EM PO", "LEITE UHT", "LIMPADOR", "SABAO", "total"]}, {"label": "SEGMENTACAO_MERCADO", "count": 9, "values": ["CANAL", "MICROREGIAO", "PARCIAL MICROREGIAO CANAL", "PARCIAL UF CANAL", "REGIAO", "REGIAO - CANAL", "TOTAL GERAL", "UF", "UF - CANAL"]}, {"label": "MERCADO", "count": 297, "values": ["1 a 4", "10+", "5 a 9", "AC", "AC - REG MET+INTERIOR", "AC+RO - 1 a 4", "AC+RO - 10+ e Atacarejo", "AC+RO - 5 a 9", "AL", "AL - 1 a 4", "AL - 10+ e Atacarejo", "AL - 5 a 9", "AL - INTERIOR", "AL - REG MET", "AM", "AM - REG MET + INTERIOR", "AM+RR - 1 a 4", "AM+RR - 10+ e Atacarejo", "AM+RR - 5 a 9", "AP", "AP - REG MET + INTERIOR", "Atacarejo", "BA", "BA - 1 a 4", "BA - 10+ e Atacarejo", "BA - 5 a 9", "BA - INTERIOR", "BA - REG MET", "BA+SE - 1 a 4", "BA+SE - 10+", "BA+SE - 5 a 9", "BA+SE - Atacarejo", "BA+SE - INTERIOR - 1 a 4", "BA+SE - INTERIOR - 10+ e ATACAREJO", "BA+SE - INTERIOR - 5 a 9", "BA+SE - REG MET - 1 a 4", "BA+SE - REG MET - 10+ e ATACAREJO", "BA+SE - REG MET - 5 a 9", "BRASIL", "CE", "CE - 1 a 4", "CE - 10+ e Atacarejo", "CE - 5 a 9", "CE - INTERIOR", "CE - REG MET", "DF", "DF - 1 a 4", "DF - 10+", "DF - 10+ e Atacarejo", "DF - 5 a 9", "DF - Atacarejo", "DF - REG MET", "DF - REG MET - 1 a 4", "DF - REG MET - 10+ e ATACAREJO", "DF - REG MET - 5 a 9", "ES", "ES - 1 a 4", "ES - 10+ e Atacarejo", "ES - 5 a 9", "ES - INTERIOR", "ES - REG MET", "GO", "GO - 1 a 4", "GO - 10+", "GO - 10+ e Atacarejo", "GO - 5 a 9", "GO - Atacarejo", "GO - INTERIOR", "GO - INTERIOR - 1 a 4", "GO - INTERIOR - 10+ e ATACAREJO", "GO - INTERIOR - 5 a 9", "GO - REG MET", "GO - REG MET - 1 a 4", "GO - REG MET - 10+ e ATACAREJO", "GO - REG MET - 5 a 9", "MA", "MA - REG MET + INTERIOR", "MA+PI - 1 a 4", "MA+PI - 10+ e Atacarejo", "MA+PI - 5 a 9", "MA+PI+CE - 1 a 4", "MA+PI+CE - 10+", "MA+PI+CE - 5 a 9", "MA+PI+CE - Atacarejo", "MA+PI+CE - INTERIOR - 1 a 4", "MA+PI+CE - INTERIOR - 10+ e ATACAREJO", "MA+PI+CE - INTERIOR - 5 a 9", "MA+PI+CE - REG MET - 1 a 4", "MA+PI+CE - REG MET - 10+ e ATACAREJO", "MA+PI+CE - REG MET - 5 a 9", "MG", "MG - 1 a 4", "MG - 10+", "MG - 10+ e Atacarejo", "MG - 5 a 9", "MG - Atacarejo", "MG - INTERIOR", "MG - INTERIOR - 1 a 4", "MG - INTERIOR - 10+ e ATACAREJO", "MG - INTERIOR - 5 a 9", "MG - REG MET", "MG - REG MET - 1 a 4", "MG - REG MET - 10+ e ATACAREJO", "MG - REG MET - 5 a 9", "MG - REGIAO SUL DE MINAS", "MG - REGIAO SUL DE MINAS - 1 a 4", "MG - REGIAO SUL DE MINAS - 10+ e ATACAREJO", "MG - REGIAO SUL DE MINAS - 5 a 9", "MG - REGIAO TRIANGULO MINEIRO", "MG - REGIAO TRIANGULO MINEIRO - 1 a 4", "MG - REGIAO TRIANGULO MINEIRO - 10+ e ATACAREJO", "MG - REGIAO TRIANGULO MINEIRO - 5 a 9", "MS", "MS - 1 a 4", "MS - 10+ e Atacarejo", "MS - 5 a 9", "MS - REG MET + INTERIOR", "MT", "MT - 1 a 4", "MT - 10+ e Atacarejo", "MT - 5 a 9", "MT - REG MET + INTERIOR", "MT+MS - 1 a 4", "MT+MS - 10+", "MT+MS - 5 a 9", "MT+MS - Atacarejo", "PA", "PA - REG MET + INTERIOR", "PA+AP+TO - 1 a 4", "PA+AP+TO - 10+ e Atacarejo", "PA+AP+TO - 5 a 9", "PB", "PB - 1 a 4", "PB - 10+ e Atacarejo", "PB - 5 a 9", "PB - INTERIOR", "PB - REG MET", "PE", "PE - 1 a 4", "PE - 10+ e Atacarejo", "PE - 5 a 9", "PE - INTERIOR", "PE - REG MET", "PE+AL - 1 a 4", "PE+AL - 10+", "PE+AL - 5 a 9", "PE+AL - Atacarejo", "PE+AL - INTERIOR - 1 a 4", "PE+AL - INTERIOR - 10+ e ATACAREJO", "PE+AL - INTERIOR - 5 a 9", "PE+AL - REG MET - 1 a 4", "PE+AL - REG MET - 10+ e ATACAREJO", "PE+AL - REG MET - 5 a 9", "PI", "PI - INTERIOR", "PI - REG MET", "PR", "PR - 1 a 4", "PR - 10+", "PR - 10+ e Atacarejo", "PR - 5 a 9", "PR - Atacarejo", "PR - REG MET", "PR - REG MET - 1 a 4", "PR - REG MET - 10+ e ATACAREJO", "PR - REG MET - 5 a 9", "PR - REGIAO INTERIOR PARANAENSE", "PR - REGIAO INTERIOR PARANAENSE - 1 a 4", "PR - REGIAO INTERIOR PARANAENSE - 10+ e ATACAREJO", "PR - REGIAO INTERIOR PARANAENSE - 5 a 9", "PR - REGIAO NORTE PARANAENSE", "PR - REGIAO NORTE PARANAENSE - 1 a 4", "PR - REGIAO NORTE PARANAENSE - 10+ e ATACAREJO", "PR - REGIAO NORTE PARANAENSE - 5 a 9", "Região Centro-Oeste", "Região Centro-Oeste - 1 a 4", "Região Centro-Oeste - 10+", "Região Centro-Oeste - 5 a 9", "Região Centro-Oeste - Atacarejo", "Região Nordeste", "Região Nordeste - 1 a 4", "Região Nordeste - 10+", "Região Nordeste - 5 a 9", "Região Nordeste - Atacarejo", "Região Norte", "Região Norte - 1 a 4", "Região Norte - 10+", "Região Norte - 5 a 9", "Região Norte - Atacarejo", "Região Sudeste", "Região Sudeste - 1 a 4", "Região Sudeste - 10+", "Região Sudeste - 5 a 9", "Região Sudeste - Atacarejo", "Região Sul", "Região Sul - 1 a 4", "Região Sul - 10+", "Região Sul - 5 a 9", "Região Sul - Atacarejo", "RJ", "RJ - 1 a 4", "RJ - 10+ e Atacarejo", "RJ - 5 a 9", "RJ - INTERIOR", "RJ - REG MET", "RJ+ES - 1 a 4", "RJ+ES - 10+", "RJ+ES - 5 a 9", "RJ+ES - Atacarejo", "RJ+ES - INTERIOR - 1 a 4", "RJ+ES - INTERIOR - 10+ e ATACAREJO", "RJ+ES - INTERIOR - 5 a 9", "RJ+ES - REG MET - 1 a 4", "RJ+ES - REG MET - 10+ e ATACAREJO", "RJ+ES - REG MET - 5 a 9", "RN", "RN - 1 a 4", "RN - 10+ e Atacarejo", "RN - 5 a 9", "RN - INTERIOR", "RN - REG MET", "RN+PB - 1 a 4", "RN+PB - 10+", "RN+PB - 5 a 9", "RN+PB - Atacarejo", "RN+PB - INTERIOR - 1 a 4", "RN+PB - INTERIOR - 10+ e ATACAREJO", "RN+PB - INTERIOR - 5 a 9", "RN+PB - REG MET - 1 a 4", "RN+PB - REG MET - 10+ e ATACAREJO", "RN+PB - REG MET - 5 a 9", "RO", "RO - INTERIOR", "RO - REG MET", "RR", "RR - REG MET + INTERIOR", "RS", "RS - 1 a 4", "RS - 10+ e Atacarejo", "RS - 5 a 9", "RS - INTERIOR", "RS - REG MET", "RS+SC - 1 a 4", "RS+SC - 10+", "RS+SC - 5 a 9", "RS+SC - Atacarejo", "RS+SC - INTERIOR - 1 a 4", "RS+SC - INTERIOR - 10+ e ATACAREJO", "RS+SC - INTERIOR - 5 a 9", "RS+SC - REG MET - 1 a 4", "RS+SC - REG MET - 10+ e ATACAREJO", "RS+SC - REG MET - 5 a 9", "SC", "SC - 1 a 4", "SC - 10+ e Atacarejo", "SC - 5 a 9", "SC - INTERIOR", "SC - REG MET", "SE", "SE - 1 a 4", "SE - 10+ e Atacarejo", "SE - 5 a 9", "SE - INTERIOR", "SE - REG MET", "SP", "SP - 1 a 4", "SP - 10+", "SP - 10+ e Atacarejo", "SP - 5 a 9", "SP - Atacarejo", "SP - REG MET", "SP - REG MET - 1 a 4", "SP - REG MET - 10+ e ATACAREJO", "SP - REG MET - 5 a 9", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 1 a 4", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 10+ e ATACAREJO", "SP - REGIAO  VALE PARAIBA E LIT PAULISTA - 5 a 9", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 1 a 4", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 10+ e ATACAREJO", "SP - REGIAO BAURU + PRESIDENTE PRUDENTE - 5 a 9", "SP - REGIAO CAMPINAS", "SP - REGIAO CAMPINAS - 1 a 4", "SP - REGIAO CAMPINAS - 10+ e ATACAREJO", "SP - REGIAO CAMPINAS - 5 a 9", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 1 a 4", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 10+ e ATACAREJO", "SP - REGIAO RIB PRETO E SAO JOSE RIO PRETO - 5 a 9", "SP - REGIAO SOROCABA", "SP - REGIAO SOROCABA - 1 a 4", "SP - REGIAO SOROCABA - 10+ e ATACAREJO", "SP - REGIAO SOROCABA - 5 a 9", "TO", "TO - INTERIOR", "TO - REG MET"]}, {"label": "SEGMENTACAO_PRODUTO", "count": 5, "values": ["CATEGORIA", "CODIGO_BARRAS", "FABRICANTE", "MARCA", "NOME_PRODUTO"]}, {"label": "SAME_STORE", "count": 2, "values": ["BASE SAME STORE", "BASE TOTAL"]}, {"label": "TIPO_CONTEUDO", "count": 2, "values": ["FIXO", "TOTAL"]}], "linhas": "179719358"}];
+const GROUP_ORDER = ['Alimentar','Farma','Ecomm','Outros'];
+let GROUPS = {};
+let groupTR  = null;
+let groupCAT = null;
+let groupCMP = null;
+let currentField = null;
+let showOnlyDups = false;
+let allFV = {};
+
+const isDate   = v => /^\d{4}-\d{2}-\d{2}/.test(v);
+const isPeriod  = v => ['FULLYEAR_ACTUAL','FULLYEAR_ANTERIOR','YTD_ACTUAL','YTD_ANTERIOR'].includes(v);
+const esc       = s => String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const sn        = f => f.replace(/\.txt$/i,'');
+const fmt       = n => n ? parseInt(n.replace(/\D/g,'')).toLocaleString('pt-BR') : '?';
+const colClass  = i => i % 2 === 0 ? 'col-even' : 'col-odd';
+
+function getGroup(filename) {
+  const n = filename.toLowerCase();
+  if (n.includes('alimentar') || n.includes('pesable')) return 'Alimentar';
+  if (n.includes('farma')) return 'Farma';
+  if (n.includes('ecomm')) return 'Ecomm';
+  return 'Outros';
+}
+
+function init() {
+  DATA.forEach(t => {
+    const g = getGroup(t.filename);
+    if (!GROUPS[g]) GROUPS[g] = [];
+    GROUPS[g].push(t);
+  });
+  const gnames = GROUP_ORDER.filter(g => GROUPS[g]);
+  groupTR  = gnames[0] || null;
+  groupCAT = gnames[0] || null;
+  groupCMP = gnames[0] || null;
+
+  document.getElementById('header-info').textContent = DATA.length + ' transferencia' + (DATA.length !== 1 ? 's' : '');
+
+  const labels = new Set();
+  DATA.forEach(t => t.fields.forEach(f => labels.add(f.label)));
+  labels.forEach(lb => {
+    const s = new Set();
+    DATA.forEach(t => { const f = t.fields.find(f => f.label === lb); if (f) f.values.forEach(v => s.add(v)); });
+    allFV[lb] = [...s].sort();
+  });
+
+  renderGroupTabsTR();
+  renderCards();
+  renderGroupTabsCAT();
+  renderFieldSel();
+  renderGroupTabsCMP();
+  renderCompare();
+  if (DATA.length > 0) {
+    const grp0 = GROUPS[groupTR] || DATA;
+    selectTransfer(grp0[0], 0);
+    selectField(DATA[0].fields[0]?.label || null);
+  }
+}
+
+function switchView(v) {
+  ['transferencia','categoria','comparar'].forEach(x =>
+    document.getElementById('view-' + x).style.display = x === v ? 'block' : 'none'
+  );
+  document.querySelectorAll('.tab').forEach((t, i) =>
+    t.classList.toggle('active', ['transferencia','categoria','comparar'][i] === v)
+  );
+}
+
+/* ---- Por Transferencia ---- */
+function renderGroupTabsTR() {
+  const gnames = GROUP_ORDER.filter(g => GROUPS[g]);
+  document.getElementById('tr-group-tabs').innerHTML =
+    '<span class="group-label">Grupo:</span>' +
+    gnames.map(g =>
+      '<button class="group-tab' + (g === groupTR ? ' active' : '') + '" onclick="selectGroupTR(\'' + g + '\')">'
+      + g + ' <span class="gtcount">(' + GROUPS[g].length + ')</span></button>'
+    ).join('');
+}
+
+function selectGroupTR(g) {
+  groupTR = g;
+  document.querySelectorAll('#tr-group-tabs .group-tab').forEach(b =>
+    b.classList.toggle('active', b.textContent.trim().startsWith(g))
+  );
+  document.getElementById('transfer-detail').innerHTML = '';
+  renderCards();
+}
+
+function renderCards() {
+  const grpData = GROUPS[groupTR] || DATA;
+  document.getElementById('transfer-cards').innerHTML = grpData.map((t, i) => {
+    const cats = t.fields.find(f => f.label === 'SEGMENTACAO_CATEGORIA');
+    const per  = t.fields.find(f => f.label === 'PERIODO');
+    const sem  = per ? per.values.filter(isDate).length : 0;
+    const fname = t.filename.replace(/'/g,"\\'");
+    return '<div class="transfer-card" id="tc-' + i + '" onclick="selectTransfer(DATA.find(x=>x.filename===\'' + fname + '\'),' + i + ')">'
+      + '<div class="tc-name">' + esc(sn(t.filename)) + '</div>'
+      + '<div class="tc-meta">'
+      + (cats ? '<span class="tc-badge green">' + cats.count + ' categorias</span>' : '')
+      + (sem  ? '<span class="tc-badge blue">'  + sem  + ' semanas</span>' : '')
+      + (t.linhas ? '<span class="tc-badge blue">' + fmt(t.linhas) + ' linhas</span>' : '')
+      + '</div></div>';
+  }).join('');
+}
+
+function selectTransfer(t, localIdx) {
+  document.querySelectorAll('.transfer-card').forEach((c, i) => c.classList.toggle('active', i === localIdx));
+  document.getElementById('transfer-detail').innerHTML =
+    '<div class="detail-panel">'
+    + '<div class="detail-header"><div class="detail-title">' + esc(sn(t.filename)) + '</div>'
+    + '<div class="detail-meta">' + (t.linhas ? '<span class="tc-badge blue">' + fmt(t.linhas) + ' linhas</span>' : '') + '</div></div>'
+    + '<div class="fields-grid">' + t.fields.map((f, fi) => renderField(f, t.filename + fi)).join('') + '</div>'
+    + '</div>';
+}
+
+function renderField(f, id) {
+  let tags = '', lbl = '';
+  if (f.label === 'PERIODO') {
+    const d = f.values.filter(isDate), o = f.values.filter(isPeriod);
+    if (d.length) tags += '<span class="val-tag weeks">' + d.length + ' semana' + (d.length !== 1 ? 's' : '') + '</span>';
+    o.forEach(v => { tags += '<span class="val-tag period">' + esc(v) + '</span>'; });
+    lbl = d.length + ' sem. + ' + o.length + ' fixos';
+  } else {
+    f.values.forEach(v => { tags += '<span class="val-tag">' + esc(v) + '</span>'; });
+    lbl = f.count + ' valor' + (f.count !== 1 ? 'es' : '');
+  }
+  const exp = f.label !== 'PERIODO' && f.values.length > 30;
+  const sid = id.replace(/[^a-z0-9]/gi,'_');
+  return '<div class="field-block">'
+    + '<div class="field-label">' + f.label + '<span class="field-count">' + lbl + '</span></div>'
+    + '<div class="values-list" id="vl-' + sid + '">' + tags + '</div>'
+    + (exp ? '<button class="expand-btn" onclick="toggleExp(\'vl-' + sid + '\',this)">Ver todos (' + f.values.length + ')</button>' : '')
+    + '</div>';
+}
+
+function toggleExp(id, btn) {
+  const el = document.getElementById(id);
+  const ex = el.classList.toggle('expanded');
+  btn.textContent = ex ? 'Recolher' : 'Ver todos (' + el.querySelectorAll('.val-tag').length + ')';
+}
+
+/* ---- Por Campo ---- */
+function renderGroupTabsCAT() {
+  const gnames = GROUP_ORDER.filter(g => GROUPS[g]);
+  document.getElementById('cat-group-tabs').innerHTML =
+    '<span class="group-label">Grupo:</span>' +
+    gnames.map(g =>
+      '<button class="group-tab' + (g === groupCAT ? ' active' : '') + '" onclick="selectGroupCAT(\'' + g + '\')">'
+      + g + ' <span class="gtcount">(' + GROUPS[g].length + ')</span></button>'
+    ).join('');
+}
+
+function selectGroupCAT(g) {
+  groupCAT = g;
+  document.querySelectorAll('#cat-group-tabs .group-tab').forEach(b =>
+    b.classList.toggle('active', b.textContent.trim().startsWith(g))
+  );
+  if (currentField) renderMatrix(currentField);
+}
+
+function toggleDups() {
+  showOnlyDups = !showOnlyDups;
+  const btn = document.getElementById('dup-toggle');
+  btn.classList.toggle('active', showOnlyDups);
+  if (currentField) renderMatrix(currentField);
+}
+
+function renderFieldSel() {
+  const labels = [...new Set(DATA.flatMap(t => t.fields.map(f => f.label)))];
+  document.getElementById('field-selector').innerHTML = labels.map(lb =>
+    '<button class="field-btn" onclick="selectField(\'' + lb + '\')" id="fb-' + lb.replace(/\W/g,'_') + '">' + lb + '</button>'
+  ).join('');
+}
+
+function selectField(lb) {
+  currentField = lb;
+  document.querySelectorAll('.field-btn').forEach(b => b.classList.remove('active'));
+  const btn = document.getElementById('fb-' + lb.replace(/\W/g,'_'));
+  if (btn) btn.classList.add('active');
+  renderMatrix(lb);
+}
+
+function renderMatrix(lb) {
+  const search = document.getElementById('cat-search').value.toLowerCase();
+  const grpData = GROUPS[groupCAT] || DATA;
+
+  // Build all unique values for the group
+  const gFV = {};
+  grpData.forEach(t => { const f = t.fields.find(f => f.label === lb); if (f) f.values.forEach(v => { gFV[v] = true; }); });
+  let rows = [];
+  if (lb === 'PERIODO') {
+    if (grpData.some(t => { const f = t.fields.find(f => f.label === lb); return f && f.values.some(isDate); })) rows.push('__SEM__');
+    rows.push(...[...new Set(Object.keys(gFV).filter(isPeriod))].sort());
+  } else { rows = Object.keys(gFV).sort(); }
+
+  // Apply search filter
+  let fil = search ? rows.filter(v => v === '__SEM__' || v.toLowerCase().includes(search)) : rows;
+
+  // Apply duplicates filter: keep only values present in 2+ transfers
+  if (showOnlyDups) {
+    fil = fil.filter(val => {
+      if (val !== '__SEM__' && String(val).trim().toLowerCase() === 'total') return false;
+      if (val === '__SEM__') {
+        return grpData.filter(t => { const f = t.fields.find(f => f.label === lb); return f && f.values.some(isDate); }).length > 1;
+      }
+      return grpData.filter(t => { const f = t.fields.find(f => f.label === lb); return f && f.values.includes(val); }).length > 1;
+    });
+  }
+
+  // Compute per-transfer counts (how many of the visible rows each transfer has)
+  const transferCounts = grpData.map(t => {
+    const f = t.fields.find(f => f.label === lb);
+    if (!f) return 0;
+    return fil.filter(val => {
+      if (val === '__SEM__') return f.values.some(isDate);
+      return f.values.includes(val);
+    }).length;
+  });
+
+  const totalRows = fil.length;
+  const noun = lb === 'SEGMENTACAO_CATEGORIA' ? 'categori' + (totalRows !== 1 ? 'as' : 'a') : 'valor' + (totalRows !== 1 ? 'es' : '');
+
+  // Update search count display
+  let countTxt = totalRows + ' ' + noun;
+  if (showOnlyDups) countTxt += ' (duplicadas)';
+  document.getElementById('cat-count').textContent = countTxt;
+
+  const cw = grpData.length > 8 ? '100px' : '130px';
+  const cs = 'grid-template-columns:260px ' + grpData.map(() => cw).join(' ');
+
+  let h = '<div class="cat-matrix-wrap"><div class="cat-matrix">';
+
+  // Header row with counts
+  h += '<div class="cat-matrix-header" style="' + cs + '">';
+  h += '<div class="cat-col"><span class="col-name">Valor</span><span class="col-count highlight">' + totalRows + ' ' + noun + '</span></div>';
+  grpData.forEach((t, i) => {
+    h += '<div class="cat-col ' + colClass(i) + '"><span class="col-name">' + sn(t.filename) + '</span><span class="col-count">' + transferCounts[i] + ' de ' + totalRows + '</span></div>';
+  });
+  h += '</div>';
+
+  // Data rows
+  fil.forEach(val => {
+    const disp = val === '__SEM__' ? 'Semanas' : esc(val);
+    h += '<div class="cat-matrix-row" style="' + cs + '"><div class="cat-col value-name">' + disp + '</div>';
+    grpData.forEach((t, i) => {
+      const f = t.fields.find(f => f.label === lb);
+      const ok = val === '__SEM__' ? (f && f.values.some(isDate)) : (f && f.values.includes(val));
+      h += '<div class="cat-col ' + colClass(i) + '">'
+        + (ok ? '<span class="present-dot"></span>' : '<span class="absent-dot"></span>')
+        + '</div>';
+    });
+    h += '</div>';
+  });
+
+  h += '</div></div>';
+  document.getElementById('cat-matrix').innerHTML = h;
+}
+
+function filterCatValues() { if (currentField) renderMatrix(currentField); }
+
+/* ---- Comparar ---- */
+function renderGroupTabsCMP() {
+  const gnames = GROUP_ORDER.filter(g => GROUPS[g]);
+  document.getElementById('cmp-group-tabs').innerHTML =
+    '<span class="group-label">Grupo:</span>' +
+    gnames.map(g =>
+      '<button class="group-tab' + (g === groupCMP ? ' active' : '') + '" onclick="selectGroupCMP(\'' + g + '\')">'
+      + g + ' <span class="gtcount">(' + GROUPS[g].length + ')</span></button>'
+    ).join('');
+}
+
+function selectGroupCMP(g) {
+  groupCMP = g;
+  document.querySelectorAll('#cmp-group-tabs .group-tab').forEach(b =>
+    b.classList.toggle('active', b.textContent.trim().startsWith(g))
+  );
+  renderCompare();
+}
+
+function renderCompare() {
+  const grpData = GROUPS[groupCMP] || DATA;
+  const labels = [...new Set(grpData.flatMap(t => t.fields.map(f => f.label)))];
+  const gFV = {};
+  labels.forEach(lb => {
+    const s = new Set();
+    grpData.forEach(t => { const f = t.fields.find(f => f.label === lb); if (f) f.values.forEach(v => s.add(v)); });
+    gFV[lb] = [...s].sort();
+  });
+  let h = '';
+  labels.forEach(lb => {
+    const allVals = gFV[lb];
+    const inAll = allVals.filter(v => grpData.every(t => { const f = t.fields.find(f => f.label === lb); return f && f.values.includes(v); }));
+    const onlyIn = grpData.map(t => { const f = t.fields.find(f => f.label === lb); if (!f) return []; return f.values.filter(v => !inAll.includes(v)); });
+    h += '<div class="compare-field-section"><div class="cfs-header">' + lb
+      + '<span class="cfs-header-detail">' + inAll.length + ' em comum &mdash; ' + allVals.length + ' unicos</span></div><div class="cfs-body">';
+    grpData.forEach((t, i) => {
+      const f = t.fields.find(f => f.label === lb), vals = f ? f.values : [], excl = onlyIn[i];
+      let body = '';
+      if (lb === 'PERIODO') {
+        excl.filter(isPeriod).forEach(v => { body += '<span class="diff-tag only-here">' + esc(v) + '</span>'; });
+        const cd = vals.filter(v => inAll.includes(v) && isDate(v));
+        if (cd.length) body += '<span class="diff-tag in-all">' + cd.length + ' semanas em comum</span>';
+        vals.filter(v => inAll.includes(v) && isPeriod(v)).forEach(v => { body += '<span class="diff-tag in-all">' + esc(v) + '</span>'; });
+      } else {
+        excl.forEach(v => { body += '<span class="diff-tag only-here">' + esc(v) + '</span>'; });
+        vals.filter(v => inAll.includes(v)).forEach(v => { body += '<span class="diff-tag in-all">' + esc(v) + '</span>'; });
+      }
+      if (!vals.length) body = '<span style="color:var(--text2);font-size:11px">Ausente</span>';
+      h += '<div class="cfs-transfer"><div class="cfs-t-header">' + sn(t.filename) + ' &mdash; ' + vals.length + ' valor' + (vals.length !== 1 ? 'es' : '') + '</div>'
+        + '<div class="cfs-t-body">' + body + '</div></div>';
+    });
+    h += '</div></div>';
+  });
+  document.getElementById('compare-content').innerHTML = h || '<div class="empty">Sem dados</div>';
+}
+
+init();
+</script>
+</body>
+</html>
