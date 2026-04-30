@@ -319,6 +319,7 @@ function selectField(lb) {
 function renderMatrix(lb) {
   const search = document.getElementById('cat-search').value.toLowerCase();
   const grpData = GROUPS[groupCAT] || DATA;
+  const isTotalValue = v => String(v).trim().toLowerCase() === 'total';
 
   // Build all unique values for the group
   const gFV = {};
@@ -328,6 +329,7 @@ function renderMatrix(lb) {
     if (grpData.some(t => { const f = t.fields.find(f => f.label === lb); return f && f.values.some(isDate); })) rows.push('__SEM__');
     rows.push(...[...new Set(Object.keys(gFV).filter(isPeriod))].sort());
   } else { rows = Object.keys(gFV).sort(); }
+  if (lb === 'SEGMENTACAO_CATEGORIA') rows = rows.filter(v => !isTotalValue(v));
 
   // Apply search filter
   let fil = search ? rows.filter(v => v === '__SEM__' || v.toLowerCase().includes(search)) : rows;
@@ -335,7 +337,7 @@ function renderMatrix(lb) {
   // Apply duplicates filter: keep only values present in 2+ transfers
   if (showOnlyDups) {
     fil = fil.filter(val => {
-      if (val !== '__SEM__' && String(val).trim().toLowerCase() === 'total') return false;
+      if (val !== '__SEM__' && isTotalValue(val)) return false;
       if (val === '__SEM__') {
         return grpData.filter(t => { const f = t.fields.find(f => f.label === lb); return f && f.values.some(isDate); }).length > 1;
       }
@@ -416,6 +418,7 @@ function selectGroupCMP(g) {
 function renderCompare() {
   const grpData = GROUPS[groupCMP] || DATA;
   const labels = [...new Set(grpData.flatMap(t => t.fields.map(f => f.label)))];
+  const isTotalValue = v => String(v).trim().toLowerCase() === 'total';
   const gFV = {};
   labels.forEach(lb => {
     const s = new Set();
@@ -424,25 +427,32 @@ function renderCompare() {
   });
   let h = '';
   labels.forEach(lb => {
-    const allVals = gFV[lb];
+    const allVals = lb === 'SEGMENTACAO_CATEGORIA'
+      ? gFV[lb].filter(v => !isTotalValue(v))
+      : gFV[lb];
     const inAll = allVals.filter(v => grpData.every(t => { const f = t.fields.find(f => f.label === lb); return f && f.values.includes(v); }));
-    const onlyIn = grpData.map(t => { const f = t.fields.find(f => f.label === lb); if (!f) return []; return f.values.filter(v => !inAll.includes(v)); });
+    const onlyIn = grpData.map(t => {
+      const f = t.fields.find(f => f.label === lb);
+      if (!f) return [];
+      return f.values.filter(v => !inAll.includes(v) && !(lb === 'SEGMENTACAO_CATEGORIA' && isTotalValue(v)));
+    });
     h += '<div class="compare-field-section"><div class="cfs-header">' + lb
       + '<span class="cfs-header-detail">' + inAll.length + ' em comum &mdash; ' + allVals.length + ' unicos</span></div><div class="cfs-body">';
     grpData.forEach((t, i) => {
       const f = t.fields.find(f => f.label === lb), vals = f ? f.values : [], excl = onlyIn[i];
+      const displayVals = lb === 'SEGMENTACAO_CATEGORIA' ? vals.filter(v => !isTotalValue(v)) : vals;
       let body = '';
       if (lb === 'PERIODO') {
         excl.filter(isPeriod).forEach(v => { body += '<span class="diff-tag only-here">' + esc(v) + '</span>'; });
-        const cd = vals.filter(v => inAll.includes(v) && isDate(v));
+        const cd = displayVals.filter(v => inAll.includes(v) && isDate(v));
         if (cd.length) body += '<span class="diff-tag in-all">' + cd.length + ' semanas em comum</span>';
-        vals.filter(v => inAll.includes(v) && isPeriod(v)).forEach(v => { body += '<span class="diff-tag in-all">' + esc(v) + '</span>'; });
+        displayVals.filter(v => inAll.includes(v) && isPeriod(v)).forEach(v => { body += '<span class="diff-tag in-all">' + esc(v) + '</span>'; });
       } else {
         excl.forEach(v => { body += '<span class="diff-tag only-here">' + esc(v) + '</span>'; });
-        vals.filter(v => inAll.includes(v)).forEach(v => { body += '<span class="diff-tag in-all">' + esc(v) + '</span>'; });
+        displayVals.filter(v => inAll.includes(v)).forEach(v => { body += '<span class="diff-tag in-all">' + esc(v) + '</span>'; });
       }
-      if (!vals.length) body = '<span style="color:var(--text2);font-size:11px">Ausente</span>';
-      h += '<div class="cfs-transfer"><div class="cfs-t-header">' + sn(t.filename) + ' &mdash; ' + vals.length + ' valor' + (vals.length !== 1 ? 'es' : '') + '</div>'
+      if (!displayVals.length) body = '<span style="color:var(--text2);font-size:11px">Ausente</span>';
+      h += '<div class="cfs-transfer"><div class="cfs-t-header">' + sn(t.filename) + ' &mdash; ' + displayVals.length + ' valor' + (displayVals.length !== 1 ? 'es' : '') + '</div>'
         + '<div class="cfs-t-body">' + body + '</div></div>';
     });
     h += '</div></div>';
